@@ -4,6 +4,7 @@ import express, {
     type Response,
 } from "express";
 import { Pool } from "pg";
+import sendResponse from "./utils/sendResponse";
 const app: Application = express();
 const port = 3000;
 
@@ -38,7 +39,30 @@ const initDB = async () => {
 initDB();
 
 app.get("/", (req: Request, res: Response) => {
-    res.send("Hello World");
+    res.send("API base route");
+});
+
+app.get("/api/v1/users", async (req: Request, res: Response) => {
+    try {
+        const result = await pool.query(`
+            SELECT * FROM users 
+        `);
+        sendResponse(res, 200, true, "Success", result.rows);
+    } catch (error) {
+        sendResponse(res, 500, false, "Internal server error");
+    }
+});
+
+app.get("/api/v1/users/:id", async (req: Request, res: Response) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query(`SELECT * FROM users WHERE id=$1`, [
+            id,
+        ]);
+        sendResponse(res, 200, true, "Success", result.rows[0]);
+    } catch (error) {
+        sendResponse(res, 500, false, "Internal server error");
+    }
 });
 
 app.post("/api/v1/users", async (req: Request, res: Response) => {
@@ -51,17 +75,9 @@ app.post("/api/v1/users", async (req: Request, res: Response) => {
             [name, email, password, age],
         );
 
-        res.status(201).json({
-            success: true,
-            message: "Created Successfully",
-            data: result.rows[0],
-        });
+        sendResponse(res, 201, true, "Created Successfully", result.rows[0]);
     } catch (error: any) {
-        res.status(500).json({
-            success: false,
-            message: error?.message,
-            data: error,
-        });
+        sendResponse(res, 500, false, error?.message, error);
     }
 });
 
